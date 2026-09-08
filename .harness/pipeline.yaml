@@ -1,0 +1,83 @@
+pipeline:
+  name: ReconFace-CI-CD
+  identifier: ReconFace_CICD
+  projectIdentifier: OSINT_Recon
+  orgIdentifier: default
+  tags: {}
+  stages:
+    # ── Stage 1: Continuous Integration (Build & Test) ─────────────────────────
+    - stage:
+        name: Build and Test
+        identifier: build_and_test
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Run Unit and Integration Tests
+                  identifier: run_tests
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: python:3.11-slim
+                    command: |-
+                      apt-get update && apt-get install -y libgl1 libglib2.0-0 libgomp1
+                      pip install --upgrade pip
+                      pip install -e ".[dev]"
+                      pytest tests/ -v --junitxml=test-results.xml
+                    reports:
+                      type: JUnit
+                      spec:
+                        paths:
+                          - "test-results.xml"
+
+              - step:
+                  type: BuildAndPushDockerRegistry
+                  name: Build and Push Docker Image
+                  identifier: build_and_push_image
+                  spec:
+                    connectorRef: <+input>
+                    repo: reconface/api
+                    tags:
+                      - <+pipeline.sequenceId>
+                      - latest
+                    dockerfile: Dockerfile
+
+    # ── Stage 2: Continuous Deployment (CD to Kubernetes) ─────────────────────
+    - stage:
+        name: Deploy to Production
+        identifier: deploy_production
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            name: reconface-service
+            identifier: reconface_service
+          environment:
+            name: Production
+            identifier: production
+            type: Production
+          execution:
+            steps:
+              - step:
+                  type: K8sRollingDeploy
+                  name: Rolling Deployment
+                  identifier: rolling_deploy
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+              - step:
+                  type: Http
+                  name: Health Check Verification
+                  identifier: verify_health
+                  spec:
+                    url: http://reconface-api-service/api/v1/health
+                    method: GET
+                    assertion: <+httpResponseCode> == 200

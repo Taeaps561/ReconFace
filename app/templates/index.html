@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReconFace — High-Precision Facial Recon & OSINT Scanner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #060911;
+            --bg-surface: rgba(13, 20, 36, 0.78);
+            --bg-surface-hover: rgba(23, 34, 59, 0.88);
+            --border: rgba(255, 255, 255, 0.10);
+            --border-glow: rgba(59, 130, 246, 0.35);
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.4);
+            --accent: #06b6d4;
+            --accent-glow: rgba(6, 182, 212, 0.35);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.16) 0%, transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.14) 0%, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 24px;
+            overflow-x: hidden;
+        }
+
+        .container { max-width: 1240px; margin: 0 auto; width: 100%; }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 26px;
+            background: var(--bg-surface);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo-icon {
+            width: 44px; height: 44px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .logo-text h1 {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(90deg, #ffffff, #93c5fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .logo-text p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        .status-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .hardware-badge {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #34d399;
+        }
+        .hardware-badge .status-dot {
+            width: 8px; height: 8px; border-radius: 50%; background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+            animation: pulseDot 2s infinite ease-in-out;
+        }
+
+        .model-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #93c5fd;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.6; }
+        }
+
+        /* Layout Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 440px minmax(0, 1fr);
+            gap: 24px;
+            align-items: start;
+        }
+
+        @media (max-width: 992px) {
+            .main-grid { grid-template-columns: minmax(0, 1fr); }
+        }
+
+        .card {
+            background: var(--bg-surface);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ffffff;
+        }
+
+        .step-badge {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        /* Form Controls */
+        .input-group {
+            margin-bottom: 18px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .text-input {
+            width: 100%;
+            background: rgba(8, 12, 22, 0.75);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .text-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+
+        /* Dropzone */
+        .dropzone {
+            border: 2px dashed rgba(59, 130, 246, 0.35);
+            background: rgba(15, 23, 42, 0.45);
+            border-radius: var(--radius-md);
+            padding: 22px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            margin-bottom: 16px;
+        }
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--accent);
+            background: rgba(6, 182, 212, 0.08);
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+            gap: 10px;
+            margin-bottom: 18px;
+            background: rgba(8, 12, 22, 0.6);
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+
+        .preview-item {
+            position: relative;
+            height: 75px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .preview-item img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .preview-remove {
+            position: absolute; top: 2px; right: 2px;
+            background: rgba(0, 0, 0, 0.75);
+            color: white; border-radius: 50%;
+            width: 18px; height: 18px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .preview-remove:hover { background: var(--danger); }
+
+        /* Target Face Picker */
+        .face-picker-container {
+            background: rgba(8, 12, 22, 0.7);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .face-picker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: #93c5fd;
+            margin-bottom: 10px;
+        }
+        .face-picker-grid {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+        }
+        .face-picker-grid::-webkit-scrollbar { height: 4px; }
+        .face-picker-grid::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.4); border-radius: 999px; }
+        .face-chip {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: var(--radius-sm);
+            border: 2px solid transparent;
+            background: rgba(15, 23, 42, 0.6);
+            transition: all 0.2s ease;
+            position: relative;
+            flex-shrink: 0;
+            width: 74px;
+        }
+        .face-chip:hover {
+            border-color: rgba(6, 182, 212, 0.5);
+            background: rgba(23, 34, 59, 0.8);
+        }
+        .face-chip.active {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.15);
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+        }
+        .face-chip img {
+            width: 60px;
+            height: 60px;
+            border-radius: 6px;
+            object-fit: cover;
+        }
+        .face-chip-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #ffffff;
+            white-space: nowrap;
+        }
+        .face-chip-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #10b981;
+            color: white;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .face-chip.active .face-chip-badge {
+            display: flex;
+        }
+
+        /* Threshold Slider */
+        .slider-wrapper {
+            background: rgba(8, 12, 22, 0.6);
+            padding: 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .slider-score {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 16px;
+            color: var(--accent);
+            font-weight: 700;
+        }
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.12);
+            outline: none;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .slider-ticks {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        /* Scan Button */
+        .btn-scan {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border: none;
+            border-radius: var(--radius-md);
+            color: white;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 20px var(--primary-glow);
+            transition: all 0.25s ease;
+        }
+        .btn-scan:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 28px var(--accent-glow);
+        }
+        .btn-scan:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Stop Scan Button */
+        .btn-stop {
+            padding: 15px 22px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border: 1px solid rgba(239, 68, 68, 0.6);
+            border-radius: var(--radius-md);
+            color: white;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+            transition: all 0.25s ease;
+            white-space: nowrap;
+        }
+        .btn-stop:hover {
+            background: linear-gradient(135deg, #f87171, #ef4444);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 26px rgba(239, 68, 68, 0.6);
+        }
+        .btn-stop:active {
+            transform: translateY(0);
+        }
+
+        .spinner {
+            width: 20px; height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .stat-card {
+            background: rgba(8, 12, 22, 0.6);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            text-align: center;
+        }
+        .stat-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-top: 2px;
+        }
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Live Progress Banner */
+        .progress-banner {
+            background: rgba(8, 12, 22, 0.7);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 18px;
+        }
+        .progress-bar-container {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            transition: width 0.3s ease;
+        }
+
+        /* Match Cards */
+        .matches-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            max-height: 620px;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+        .matches-feed::-webkit-scrollbar { width: 6px; }
+        .matches-feed::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 999px; }
+
+        .match-card {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+            width: 100%;
+        }
+        .match-card:hover {
+            border-color: var(--accent);
+            background: rgba(23, 34, 59, 0.8);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .match-thumbs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .thumb-crop {
+            width: 64px; height: 64px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            border: 2px solid var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+        .thumb-full {
+            width: 72px; height: 64px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            background: #000;
+        }
+
+        .match-info {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+        }
+        .match-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #ffffff;
+            text-decoration: none;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 4px;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+        .match-title:hover { color: var(--accent); }
+
+        .match-source {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            display: block;
+        }
+        .match-source a {
+            color: var(--accent);
+            text-decoration: none;
+            display: inline-block;
+            max-width: calc(100% - 65px);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: bottom;
+        }
+
+        .badge-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .badge-article {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.35);
+        }
+        .badge-article:hover {
+            background: rgba(59, 130, 246, 0.3);
+            color: #93c5fd;
+            border-color: #60a5fa;
+        }
+        .badge-image {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+        .badge-image:hover {
+            background: rgba(16, 185, 129, 0.3);
+            color: #6ee7b7;
+            border-color: #34d399;
+        }
+
+        .score-pill {
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            font-weight: 800;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid var(--success);
+            color: #34d399;
+            flex-shrink: 0;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--text-muted);
+        }
+
+        /* Image Lightbox Modal */
+        .lightbox-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.88);
+            backdrop-filter: blur(10px);
+            display: none; align-items: center; justify-content: center;
+            z-index: 9999; padding: 20px;
+        }
+        .lightbox-content {
+            max-width: 900px; max-height: 90vh;
+            display: flex; flex-direction: column; align-items: center;
+            gap: 14px;
+        }
+        .lightbox-img {
+            max-width: 100%; max-height: 75vh;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            box-shadow: 0 0 40px rgba(0,0,0,0.8);
+        }
+        .lightbox-close {
+            position: absolute; top: 20px; right: 26px;
+            color: white; font-size: 28px; cursor: pointer;
+            background: rgba(255,255,255,0.1); border-radius: 50%;
+            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo-group">
+                <div class="logo-icon">🕵️‍♂️</div>
+                <div class="logo-text">
+                    <h1>ReconFace Precision Scanner</h1>
+                    <p>ระบบตรวจจับ ค้นหา และพิสูจน์เอกลักษณ์บุคคลบนเว็บไซต์ (Deep Facial OSINT)</p>
+                </div>
+            </div>
+
+            <div class="header-badges">
+                <div class="model-badge">
+                    <span>🧠 ArcFace ResNet50 (512-d)</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <div class="main-grid">
+            <!-- Left Panel: Target Settings & Upload -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="step-badge">STEP 1</span>
+                        <span>ภาพบุคคลเป้าหมาย</span>
+                    </div>
+                    <span id="target-count-badge" style="font-size: 12px; color: var(--text-muted);">0 ภาพ</span>
+                </div>
+
+                <div class="dropzone" id="scanner-dropzone" onclick="document.getElementById('scanner-file-input').click()">
+                    <input type="file" id="scanner-file-input" accept="image/*" multiple style="display: none;" onchange="handleTargetFiles(this.files)">
+                    <div style="font-size: 32px; margin-bottom: 6px;">📁</div>
+                    <div style="font-size: 14px; font-weight: 600; color: #ffffff;">คลิกหรือลากไฟล์ภาพเป้าหมายมาวางที่นี่</div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">เลือกได้หลายภาพ (หน้าตรง, มุมเอียง, แว่นตา) เพื่อความแม่นยำสูงสุด</div>
+                </div>
+
+                <div class="preview-grid" id="scanner-preview-grid" style="display: none;"></div>
+
+                <!-- Interactive Target Face Picker -->
+                <div class="face-picker-container" id="target-faces-selector">
+                    <div class="face-picker-header">
+                        <span id="target-picker-title">🎯 เลือกบุคคลเป้าหมายที่ต้องการค้นหา:</span>
+                        <span id="target-picker-count" style="color: var(--accent); font-size: 11px;">0 ใบหน้า</span>
+                    </div>
+                    <div class="face-picker-grid" id="target-faces-chips"></div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">
+                        <span class="step-badge">STEP 2</span>
+                        <span style="margin-left: 4px;">แหล่งที่มาของรูปภาพ (Data Source):</span>
+                    </label>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <label id="lbl-src-local" style="flex: 1; display: flex; align-items: center; gap: 8px; background: rgba(59, 130, 246, 0.15); border: 1px solid var(--primary); padding: 10px; border-radius: var(--radius-sm); cursor: pointer;">
+                            <input type="radio" name="source_type" value="local" checked onchange="toggleSourceType('local')">
+                            <span style="font-size: 13px; font-weight: 700; color: #38bdf8;">📂 ภาพในเครื่อง (SSD)</span>
+                        </label>
+                        <label id="lbl-src-web" style="flex: 1; display: flex; align-items: center; gap: 8px; background: rgba(8,12,22,0.6); border: 1px solid var(--border); padding: 10px; border-radius: var(--radius-sm); cursor: pointer;">
+                            <input type="radio" name="source_type" value="web" onchange="toggleSourceType('web')">
+                            <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">🌐 สแกนสดจากเว็บ</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="local-source-info" style="padding: 12px 14px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-sm); margin-bottom: 16px; font-size: 12px; color: #93c5fd;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span>⚡ <strong>โหมดออฟไลน์ความเร็วสูง:</strong> สแกนรูปภาพจาก SSD โดยตรง (High-Speed Local Scan)</span>
+                        <span id="ssd-count-badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 9999px; padding: 2px 10px; font-size: 11px; font-weight: bold;">3,077 ภาพพร้อมสแกน</span>
+                    </div>
+
+                    <!-- Tool to pull images from link into SSD -->
+                    <div style="margin-top: 10px; padding: 10px; background: rgba(8, 12, 22, 0.7); border: 1px dashed rgba(59, 130, 246, 0.4); border-radius: var(--radius-sm);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label style="font-weight: 700; color: #60a5fa; font-size: 12px;">📥 ดึงรูปภาพจาก Link เว็บไซต์ลงเครื่อง (Download to SSD):</label>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="url" id="dl-link-input" class="text-input" placeholder="ใส่ URL เช่น https://www.dusit.ac.th/home/category/events" value="https://www.dusit.ac.th/home/category/events" style="font-size: 12px; padding: 8px 10px; margin-bottom: 0; flex: 1;">
+                            <select id="dl-max-pages" class="text-input" style="font-size: 11px; padding: 8px 6px; margin-bottom: 0; width: 135px; background-color: #0b1329; cursor: pointer;">
+                                <option value="50">50 หน้า (~500+ รูป)</option>
+                                <option value="150">150 หน้า (~1,500+ รูป)</option>
+                                <option value="300" selected>300 หน้า (~3,000+ รูป)</option>
+                                <option value="600">600 หน้า (~6,000+ รูป)</option>
+                                <option value="1200">1,200 หน้า (~12,000+ รูป)</option>
+                            </select>
+                            <button type="button" id="btn-dl-to-ssd" onclick="downloadImagesToSSD()" style="display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; height: 36px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: var(--transition);">
+                                <span id="dl-btn-icon">📥</span>
+                                <span id="dl-btn-text">ดึงรูปลง SSD</span>
+                            </button>
+                        </div>
+                        <div id="dl-progress-box" style="display: none; margin-top: 8px; font-size: 11px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span id="dl-status-text" style="color: #38bdf8;">⏳ กำลังขุดรูปภาพ...</span>
+                                <span id="dl-percent-text" style="color: #34d399; font-weight: bold;">0%</span>
+                            </div>
+                            <div style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 9999px; overflow: hidden;">
+                                <div id="dl-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #38bdf8, #10b981); transition: width 0.2s;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="web-source-inputs" style="display: none;">
+                    <div class="input-group">
+                        <label class="input-label">
+                            <span>URL เว็บไซต์ หรือหน้าผลค้นหา:</span>
+                        </label>
+                        <input type="url" id="scanner-webpage-url" class="text-input" placeholder="https://www.dusit.ac.th/home/?s=วิชชา+ฉิมพลี หรือ https://www.dusit.ac.th/home/category/events" value="https://www.dusit.ac.th/home/?s=วิชชา+ฉิมพลี">
+                    </div>
+
+                    <div class="input-group">
+                        <label class="input-label">
+                            <span>ระดับความลึกในการค้นหา (Search Scope):</span>
+                        </label>
+                        <select id="scanner-max-pages" class="text-input" style="cursor: pointer; background-color: #0b1329;">
+                            <option value="30">⚡ สแกนด่วน (30 หน้า — ~400 รูป)</option>
+                            <option value="100">🎯 ท่องเว็บมาตรฐาน (100 หน้า — ~1,500+ รูป)</option>
+                            <option value="200" selected>🌐 ท่องเว็บแบบลึก (200 หน้า — ~3,000+ รูป)</option>
+                            <option value="500">🚀 ขุดลึกทั้งคลังข่าวมหาวิทยาลัย (500 หน้า — ~8,000+ รูป)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="slider-wrapper">
+                    <div class="slider-header">
+                        <span>ความคล้ายคลึงขั้นต่ำ (Threshold)</span>
+                        <span class="slider-score" id="thresh-val">0.50</span>
+                    </div>
+                    <input type="range" id="scanner-threshold" class="slider" min="0.20" max="0.75" step="0.01" value="0.50" oninput="document.getElementById('thresh-val').innerText = parseFloat(this.value).toFixed(2)">
+                    <div class="slider-ticks">
+                        <span style="color: #f43f5e;">0.25 (เสี่ยงติดคนอื่น)</span>
+                        <span style="color: #f59e0b;">0.40 (มุมไกล/ภาพเก่า)</span>
+                        <span style="color: var(--accent); font-weight: 700;">0.50 (แนะนำ - สมดุล)</span>
+                        <span>0.65 (เข้มงวด)</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-scan" id="btn-scan" onclick="startFacialScan()" style="flex: 1;">
+                        <div class="spinner" id="btn-spinner"></div>
+                        <span id="btn-text">⚡ เริ่มสแกนภาพจาก SSD (High-Speed Scan)</span>
+                    </button>
+                    <button type="button" class="btn-stop" id="btn-stop-scan" onclick="stopFacialScan()" title="หยุดการสแกนทันที">
+                        <span>⏹️ หยุดสแกน</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Panel: Live Dashboard & Results -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span>📊 แผงควบคุมและผลการค้นพบบุคคล</span>
+                    </div>
+                    <span id="scan-timer" style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--accent);">0.0s</span>
+                </div>
+
+                <!-- Statistics Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label" id="stat-pages-label">หน้าเว็บที่ตรวจ</div>
+                        <div class="stat-num" id="stat-pages">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">รูปที่สแกนแล้ว</div>
+                        <div class="stat-num" id="stat-images">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">ใบหน้าที่สกัด</div>
+                        <div class="stat-num" id="stat-faces">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label" style="color: #34d399;">พบตรงเป้าหมาย</div>
+                        <div class="stat-num" id="stat-matches" style="color: #34d399;">0</div>
+                    </div>
+                </div>
+
+                <!-- Live Progress Banner -->
+                <div class="progress-banner" id="progress-banner">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                        <span id="status-text" style="font-weight: 600; color: #ffffff;">พร้อมทำงาน — แนบรูปภาพแล้วกดเริ่มสแกน</span>
+                        <span id="status-percent" style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent);">0%</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" id="progress-bar"></div>
+                    </div>
+                </div>
+
+                <!-- Matches Feed -->
+                <div class="matches-feed" id="matches-feed">
+                    <div class="empty-state">
+                        <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.6;">📸</div>
+                        <p style="font-size: 15px; font-weight: 600; color: #ffffff; margin-bottom: 4px;">ยังไม่มีการสแกน</p>
+                        <span>แนบรูปบุคคลเป้าหมายทางซ้าย แล้วกดปุ่มเริ่มสแกนเพื่อค้นหาแบบเรียลไทม์</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox Zoom Modal -->
+    <div class="lightbox-modal" id="lightbox-modal" onclick="if(event.target===this) closeLightbox()">
+        <span class="lightbox-close" onclick="closeLightbox()">✕</span>
+        <div class="lightbox-content">
+            <img id="lightbox-img" class="lightbox-img" src="" alt="Full Image Preview">
+            <div id="lightbox-caption" style="font-size: 14px; color: #cbd5e1; text-align: center;"></div>
+        </div>
+    </div>
+
+    <script>
+        let targetFiles = [];
+        let detectedTargetFaces = [];
+        let selectedTargetFaceIndex = null;
+        let detectFacesAbortController = null;
+
+        async function handleTargetFiles(files) {
+            if (!files || files.length === 0) return;
+            for (let i = 0; i < files.length; i++) {
+                targetFiles.push(files[i]);
+            }
+            renderTargetPreviews();
+            document.getElementById('scanner-file-input').value = '';
+            await detectTargetFaces();
+        }
+
+        async function detectTargetFaces() {
+            const picker = document.getElementById('target-faces-selector');
+            const chips = document.getElementById('target-faces-chips');
+            const countLabel = document.getElementById('target-picker-count');
+            const titleLabel = document.getElementById('target-picker-title');
+
+            if (detectFacesAbortController) {
+                detectFacesAbortController.abort();
+                detectFacesAbortController = null;
+            }
+
+            if (targetFiles.length === 0) {
+                picker.style.display = 'none';
+                detectedTargetFaces = [];
+                selectedTargetFaceIndex = null;
+                return;
+            }
+
+            picker.style.display = 'block';
+            titleLabel.innerText = '🎯 เลือกบุคคลเป้าหมายที่ต้องการค้นหา:';
+            countLabel.innerText = 'กำลังสแกน...';
+            chips.innerHTML = '<div style="font-size: 12px; color: var(--accent); padding: 8px 4px;">🧠 กำลังสกัดโครงสร้างใบหน้าจากภาพเป้าหมาย...</div>';
+
+            const formData = new FormData();
+            targetFiles.forEach(f => formData.append('files', f));
+
+            const controller = new AbortController();
+            detectFacesAbortController = controller;
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+            try {
+                const resp = await fetch('/api/v1/target/detect-faces', {
+                    method: 'POST',
+                    body: formData,
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText || 'Detect failed'}`);
+                const data = await resp.json();
+                detectedTargetFaces = data.faces || [];
+                countLabel.innerText = `พบ ${detectedTargetFaces.length} ใบหน้า`;
+
+                if (detectedTargetFaces.length === 0) {
+                    titleLabel.innerText = '⚠️ ไม่พบใบหน้าในภาพ:';
+                    chips.innerHTML = '<div style="font-size: 12px; color: var(--danger); padding: 6px 4px;">⚠️ ตรวจไม่พบใบหน้าในภาพเป้าหมาย กรุณาอัปโหลดภาพที่เห็นใบหน้าชัดเจน</div>';
+                    selectedTargetFaceIndex = null;
+                    return;
+                }
+
+                if (detectedTargetFaces.length === 1) {
+                    titleLabel.innerText = '✅ สกัดใบหน้าเป้าหมายสำเร็จ (พร้อมสแกน):';
+                    selectedTargetFaceIndex = 0;
+                } else {
+                    titleLabel.innerText = '👥 พบหลายใบหน้าในภาพ — คลิกเลือกบุคคลที่ต้องการสแกน:';
+                    if (selectedTargetFaceIndex === null || selectedTargetFaceIndex >= detectedTargetFaces.length) {
+                        selectedTargetFaceIndex = 0;
+                    }
+                }
+
+                chips.innerHTML = '';
+                detectedTargetFaces.forEach((f, idx) => {
+                    const chip = document.createElement('div');
+                    chip.className = `face-chip ${idx === selectedTargetFaceIndex ? 'active' : ''}`;
+                    chip.id = `face-chip-${idx}`;
+                    chip.onclick = () => selectTargetFace(idx);
+                    chip.innerHTML = `
+                        <div class="face-chip-badge">✓</div>
+                        <img src="${f.thumbnail_b64}" alt="Face #${idx+1}">
+                        <div class="face-chip-label">บุคคล #${idx+1}</div>
+                        <div style="font-size: 9px; color: var(--text-muted);">${Math.round(f.confidence * 100)}% conf</div>
+                    `;
+                    chips.appendChild(chip);
+                });
+            } catch (err) {
+                // If aborted by newer user interaction, do nothing
+                if (detectFacesAbortController !== controller) return;
+                console.error('Error detecting target faces:', err);
+                countLabel.innerText = '⚠️ เชื่อมต่อล้มเหลว';
+                titleLabel.innerText = '⚠️ ไม่สามารถสกัดใบหน้าได้:';
+                chips.innerHTML = `
+                    <div style="font-size: 12px; color: var(--warning); padding: 8px 4px; line-height: 1.5;">
+                        ⚠️ เซิร์ฟเวอร์ไม่ตอบสนอง (${err.name === 'AbortError' ? 'หมดเวลาเชื่อมต่อ 60s' : err.message})<br>
+                        <span style="font-size: 11px; color: var(--text-muted);">หากเซิร์ฟเวอร์เพิ่งเริ่มทำงาน อาจกำลังโหลดโมเดลเข้าสู่หน่วยความจำ</span>
+                        <div style="margin-top: 6px;">
+                            <button type="button" onclick="detectTargetFaces()" style="padding: 4px 12px; background: rgba(59, 130, 246, 0.2); border: 1px solid var(--primary); color: #38bdf8; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;">🔄 ลองสกัดใบหน้าใหม่</button>
+                        </div>
+                    </div>
+                `;
+            } finally {
+                if (detectFacesAbortController === controller) {
+                    detectFacesAbortController = null;
+                }
+            }
+        }
+
+        function selectTargetFace(idx) {
+            selectedTargetFaceIndex = idx;
+            document.querySelectorAll('.face-chip').forEach((c, i) => {
+                c.classList.toggle('active', i === idx);
+            });
+        }
+
+        function renderTargetPreviews() {
+            const grid = document.getElementById('scanner-preview-grid');
+            const badge = document.getElementById('target-count-badge');
+            grid.innerHTML = '';
+
+            if (targetFiles.length === 0) {
+                grid.style.display = 'none';
+                badge.innerText = '0 ภาพ';
+                return;
+            }
+
+            grid.style.display = 'grid';
+            badge.innerText = `${targetFiles.length} ภาพ`;
+
+            targetFiles.forEach((file, idx) => {
+                const div = document.createElement('div');
+                div.className = 'preview-item';
+                const url = URL.createObjectURL(file);
+                div.innerHTML = `
+                    <img src="${url}" alt="Target ${idx+1}">
+                    <span class="preview-remove" onclick="removeTargetPhoto(${idx})">✕</span>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        function removeTargetPhoto(idx) {
+            targetFiles.splice(idx, 1);
+            renderTargetPreviews();
+            detectTargetFaces();
+        }
+
+        function openLightbox(imgUrl, caption) {
+            const modal = document.getElementById('lightbox-modal');
+            const img = document.getElementById('lightbox-img');
+            const cap = document.getElementById('lightbox-caption');
+            img.src = imgUrl;
+            cap.innerText = caption || '';
+            modal.style.display = 'flex';
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox-modal').style.display = 'none';
+        }
+
+        // Drag and Drop
+        const dropzone = document.getElementById('scanner-dropzone');
+        ['dragenter', 'dragover'].forEach(name => {
+            dropzone.addEventListener(name, (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        });
+        ['dragleave', 'drop'].forEach(name => {
+            dropzone.addEventListener(name, (e) => { e.preventDefault(); dropzone.classList.remove('dragover'); });
+        });
+        dropzone.addEventListener('drop', (e) => {
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                handleTargetFiles(e.dataTransfer.files);
+            }
+        });
+
+        function toggleSourceType(type) {
+            const isLocal = type === 'local';
+            document.getElementById('local-source-info').style.display = isLocal ? 'block' : 'none';
+            document.getElementById('web-source-inputs').style.display = isLocal ? 'none' : 'block';
+            
+            const lblLocal = document.getElementById('lbl-src-local');
+            const lblWeb = document.getElementById('lbl-src-web');
+            const btnText = document.getElementById('btn-text');
+            const statPagesLabel = document.getElementById('stat-pages-label');
+            const statPages = document.getElementById('stat-pages');
+
+            if (isLocal) {
+                lblLocal.style.background = 'rgba(59, 130, 246, 0.15)';
+                lblLocal.style.borderColor = 'var(--primary)';
+                lblWeb.style.background = 'rgba(8,12,22,0.6)';
+                lblWeb.style.borderColor = 'var(--border)';
+                if (btnText && !document.getElementById('btn-scan').disabled) {
+                    btnText.innerText = '⚡ เริ่มสแกนภาพจาก SSD (High-Speed Scan)';
+                }
+                if (statPagesLabel) statPagesLabel.innerText = 'แหล่งข้อมูล';
+                if (statPages && (statPages.innerText === '0' || statPages.innerText === '')) statPages.innerText = 'SSD';
+            } else {
+                lblWeb.style.background = 'rgba(59, 130, 246, 0.15)';
+                lblWeb.style.borderColor = 'var(--primary)';
+                lblLocal.style.background = 'rgba(8,12,22,0.6)';
+                lblLocal.style.borderColor = 'var(--border)';
+                if (btnText && !document.getElementById('btn-scan').disabled) {
+                    btnText.innerText = '🚀 เริ่มสแกนค้นหาใบหน้าทั่วเว็บไซต์';
+                }
+                if (statPagesLabel) statPagesLabel.innerText = 'หน้าเว็บที่ตรวจ';
+                if (statPages && statPages.innerText === 'SSD') statPages.innerText = '0';
+            }
+        }
+
+        let scanAbortController = null;
+        let isScanAborted = false;
+        let scanTimerInterval = null;
+
+        function stopFacialScan() {
+            if (scanAbortController) {
+                isScanAborted = true;
+                scanAbortController.abort();
+                scanAbortController = null;
+            }
+            if (scanTimerInterval) {
+                clearInterval(scanTimerInterval);
+                scanTimerInterval = null;
+            }
+            const btn = document.getElementById('btn-scan');
+            const btnStop = document.getElementById('btn-stop-scan');
+            const spinner = document.getElementById('btn-spinner');
+            const btnText = document.getElementById('btn-text');
+            const statusText = document.getElementById('status-text');
+            const statusPercent = document.getElementById('status-percent');
+            const progressBar = document.getElementById('progress-bar');
+            const statMatches = document.getElementById('stat-matches');
+            const isLocal = document.querySelector('input[name="source_type"]:checked').value === 'local';
+
+            btn.disabled = false;
+            btnStop.style.display = 'none';
+            spinner.style.display = 'none';
+            btnText.innerText = isLocal ? '⚡ เริ่มสแกนภาพจาก SSD (High-Speed Scan)' : '🚀 เริ่มสแกนค้นหาใบหน้าทั่วเว็บไซต์';
+
+            const foundCount = statMatches ? statMatches.innerText : '0';
+            statusText.innerText = `⏹️ การสแกนถูกหยุดโดยผู้ใช้ (พบตรงเป้าหมาย ${foundCount} ภาพ)`;
+            statusPercent.innerText = 'หยุดแล้ว';
+            progressBar.style.background = 'var(--warning)';
+        }
+
+        async function startFacialScan() {
+            if (targetFiles.length === 0) {
+                alert('กรุณาแนบภาพถ่ายบุคคลเป้าหมายอย่างน้อย 1 ภาพ');
+                return;
+            }
+
+            const isLocal = document.querySelector('input[name="source_type"]:checked').value === 'local';
+            const webpageUrl = isLocal ? 'local' : document.getElementById('scanner-webpage-url').value.trim();
+            if (!isLocal && !webpageUrl) {
+                alert('กรุณากรอก URL เว็บไซต์');
+                return;
+            }
+
+            const btn = document.getElementById('btn-scan');
+            const btnStop = document.getElementById('btn-stop-scan');
+            const spinner = document.getElementById('btn-spinner');
+            const btnText = document.getElementById('btn-text');
+
+            const statPages = document.getElementById('stat-pages');
+            const statPagesLabel = document.getElementById('stat-pages-label');
+            const statImages = document.getElementById('stat-images');
+            const statFaces = document.getElementById('stat-faces');
+            const statMatches = document.getElementById('stat-matches');
+
+            const statusText = document.getElementById('status-text');
+            const statusPercent = document.getElementById('status-percent');
+            const progressBar = document.getElementById('progress-bar');
+            const matchesFeed = document.getElementById('matches-feed');
+            const scanTimer = document.getElementById('scan-timer');
+
+            // Reset UI & set abort controller
+            isScanAborted = false;
+            scanAbortController = new AbortController();
+            btn.disabled = true;
+            btnStop.style.display = 'flex';
+            spinner.style.display = 'inline-block';
+            btnText.innerText = 'กำลังสแกนแบบเรียลไทม์...';
+
+            if (statPagesLabel) statPagesLabel.innerText = isLocal ? 'แหล่งข้อมูล' : 'หน้าเว็บที่ตรวจ';
+            statPages.innerText = isLocal ? 'SSD (เครื่อง)' : '0';
+            statImages.innerText = '0';
+            statFaces.innerText = '0';
+            statMatches.innerText = '0';
+
+            statusText.innerText = isLocal 
+                ? '⚡ โหมดออฟไลน์: กำลังโหลดภาพจากคลัง SSD เพื่อสแกนความเร็วสูง...' 
+                : '🌐 Spider กำลังเข้าสำรวจและดึงรูปภาพจากเว็บไซต์...';
+            statusPercent.innerText = '0%';
+            progressBar.style.width = '5%';
+            progressBar.style.background = 'linear-gradient(90deg, var(--primary), var(--accent))';
+
+            matchesFeed.innerHTML = '';
+            let matchesFoundCount = 0;
+            let totalFacesScanned = 0;
+
+            if (scanTimerInterval) clearInterval(scanTimerInterval);
+            const startTime = Date.now();
+            scanTimerInterval = setInterval(() => {
+                const sec = ((Date.now() - startTime) / 1000).toFixed(1);
+                scanTimer.innerText = sec + 's';
+            }, 100);
+
+            const threshold = document.getElementById('scanner-threshold').value;
+            const maxPages = document.getElementById('scanner-max-pages') ? document.getElementById('scanner-max-pages').value : 60;
+            const formData = new FormData();
+            targetFiles.forEach(file => {
+                formData.append('files', file);
+            });
+
+            try {
+                const faceParam = selectedTargetFaceIndex !== null ? `&selected_face_index=${selectedTargetFaceIndex}` : '';
+                const response = await fetch(`/api/v1/scan-stream?webpage_url=${encodeURIComponent(webpageUrl)}&score_threshold=${threshold}&max_pages=${maxPages}${faceParam}`, {
+                    method: 'POST',
+                    body: formData,
+                    signal: scanAbortController.signal
+                });
+
+                if (!response.ok) {
+                    if (scanTimerInterval) { clearInterval(scanTimerInterval); scanTimerInterval = null; }
+                    const err = await response.json().catch(() => ({}));
+                    statusText.innerText = `⚠️ ข้อผิดพลาด: ${err.detail || 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์'}`;
+                    btn.disabled = false;
+                    btnStop.style.display = 'none';
+                    spinner.style.display = 'none';
+                    btnText.innerText = isLocal ? '⚡ เริ่มสแกนภาพจาก SSD (High-Speed Scan)' : '🚀 เริ่มสแกนค้นหาใบหน้าทั่วเว็บไซต์';
+                    return;
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = '';
+
+                while (true) {
+                    if (isScanAborted) break;
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (trimmed.startsWith('data: ')) {
+                            try {
+                                const evt = JSON.parse(trimmed.substring(6));
+
+                                if (evt.type === 'status') {
+                                    statusText.innerText = evt.message;
+                                } else if (evt.type === 'error') {
+                                    statusText.innerText = `⚠️ ${evt.message}`;
+                                } else if (evt.type === 'crawl_done') {
+                                    if (isLocal) {
+                                        statPages.innerText = 'SSD (Local)';
+                                        statImages.innerText = `0 / ${evt.total_images}`;
+                                        statusText.innerText = `📂 ตรวจพบ ${evt.total_images} ภาพในคลัง SSD — กำลังรันตรวจจับและสกัดใบหน้าความเร็วสูง...`;
+                                    } else {
+                                        statPages.innerText = evt.pages_crawled || '1';
+                                        statImages.innerText = `0 / ${evt.total_images}`;
+                                        statusText.innerText = `🕷️ รวบรวมได้ ${evt.total_images} ภาพจาก ${evt.pages_crawled} หน้า — กำลังรันโมเดลใบหน้าบน GPU...`;
+                                    }
+                                } else if (evt.type === 'download_progress') {
+                                    statImages.innerText = `${evt.downloaded} / ${evt.total}`;
+                                    statusPercent.innerText = `${evt.percent}%`;
+                                    progressBar.style.width = `${evt.percent}%`;
+                                    progressBar.style.background = 'linear-gradient(90deg, #38bdf8, #6366f1)';
+                                    statusText.innerText = `📥 กำลังดึงรูปภาพลง SSD ชั่วคราว (${evt.downloaded}/${evt.total} ภาพ)...`;
+                                } else if (evt.type === 'scan_progress' || evt.type === 'progress') {
+                                    statImages.innerText = `${evt.scanned} / ${evt.total}`;
+                                    statMatches.innerText = evt.matches_count;
+                                    if (evt.faces_found !== undefined) statFaces.innerText = evt.faces_found;
+                                    const pct = evt.total > 0 ? Math.min(100, Math.round((evt.scanned / evt.total) * 100)) : 0;
+                                    statusPercent.innerText = `${pct}%`;
+                                    progressBar.style.width = `${pct}%`;
+                                    progressBar.style.background = 'linear-gradient(90deg, var(--primary), var(--accent))';
+                                    if (isLocal) {
+                                        statusText.innerText = `⚡ กำลังสแกนรูปภาพจาก SSD (${evt.scanned}/${evt.total} ภาพ)...`;
+                                    } else {
+                                        statusText.innerText = `🧠 กำลังประมวลผล RetinaFace + ArcFace บน GPU (${evt.scanned}/${evt.total} ภาพ)...`;
+                                    }
+                                } else if (evt.type === 'match_found') {
+                                    matchesFoundCount++;
+                                    statMatches.innerText = matchesFoundCount;
+                                    const m = evt.match;
+                                    const matchPct = (m.score * 100).toFixed(1);
+
+                                    let scoreColor = '#10b981';
+                                    let scoreBadgeText = 'Match ชัดเจน';
+                                    if (m.score >= 0.60) {
+                                        scoreColor = '#10b981';
+                                        scoreBadgeText = 'Match ชัดเจน';
+                                    } else if (m.score >= 0.50) {
+                                        scoreColor = '#38bdf8';
+                                        scoreBadgeText = 'ตรงเป้าหมาย';
+                                    } else if (m.score >= 0.40) {
+                                        scoreColor = '#f59e0b';
+                                        scoreBadgeText = 'ใกล้เคียง/ภาพเก่า';
+                                    } else {
+                                        scoreColor = '#f43f5e';
+                                        scoreBadgeText = 'เสี่ยงติดคนอื่น';
+                                    }
+
+                                    const card = document.createElement('div');
+                                    card.className = 'match-card';
+                                    const articleUrl = m.page_url || webpageUrl;
+                                    const imgUrl = m.image_url;
+                                    card.innerHTML = `
+                                        <div class="match-thumbs">
+                                            ${m.thumbnail_b64 ? `<img src="${m.thumbnail_b64}" class="thumb-crop" title="คลิกเพื่อขยายใบหน้าที่สกัดได้" onclick="openLightbox('${m.thumbnail_b64}', 'Face Crop (Match: ${matchPct}%)')">` : ''}
+                                            <img src="${imgUrl}" class="thumb-full" title="คลิกเพื่อดูภาพต้นฉบับ" onclick="openLightbox('${imgUrl}', '${(m.page_title || '').replace(/'/g, '')}')" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'72\\' height=\\'64\\'><rect width=\\'72\\' height=\\'64\\' fill=\\'%231e293b\\'/></svg>'">
+                                        </div>
+                                        <div class="match-info">
+                                            <a href="${articleUrl}" target="_blank" class="match-title" title="คลิกเพื่อเปิดหน้าบทความ">${m.page_title || 'ภาพที่ตรวจพบตรงตามเป้าหมาย'}</a>
+                                            <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap;">
+                                                <a href="${articleUrl}" target="_blank" class="badge-link badge-article" title="เปิดหน้าเว็บ/บทความ">
+                                                    <span>📄 หน้าบทความ</span>
+                                                </a>
+                                                <a href="${imgUrl}" target="_blank" class="badge-link badge-image" title="เปิดดูไฟล์ภาพต้นฉบับ">
+                                                    <span>🖼️ ลิงก์รูปภาพ</span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                        <div class="score-pill" style="border-color: ${scoreColor}; color: ${scoreColor}; background: ${scoreColor}20;">
+                                            ${matchPct}%
+                                            <div style="font-size: 9px; font-weight: normal; opacity: 0.9;">${scoreBadgeText}</div>
+                                        </div>
+                                    `;
+                                    matchesFeed.prepend(card);
+                                } else if (evt.type === 'complete') {
+                                    if (scanTimerInterval) { clearInterval(scanTimerInterval); scanTimerInterval = null; }
+                                    progressBar.style.width = '100%';
+                                    progressBar.style.background = 'var(--success)';
+                                    statusPercent.innerText = '100%';
+                                    statusText.innerText = `✅ สแกนเสร็จสิ้นเรียบร้อย! พบเป้าหมายทั้งหมด ${evt.matched_count} ภาพ (ใช้เวลา ${evt.duration} วินาที)`;
+
+                                    if (matchesFoundCount === 0) {
+                                        matchesFeed.innerHTML = `
+                                            <div class="empty-state">
+                                                <div style="font-size: 40px; margin-bottom: 10px;">🔍</div>
+                                                <p style="font-weight: 600; color: #ffffff; margin-bottom: 4px;">ไม่พบใบหน้าที่ตรงกับเกณฑ์ ${threshold}</p>
+                                                <span>ลองปรับลดค่า Threshold ลงเป็น 0.50 หรือเพิ่มภาพเป้าหมายในมุมมองอื่น</span>
+                                            </div>
+                                        `;
+                                    }
+                                }
+                            } catch (e) {
+                                console.error('SSE JSON error', e);
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                if (scanTimerInterval) { clearInterval(scanTimerInterval); scanTimerInterval = null; }
+                if (err.name === 'AbortError' || isScanAborted) {
+                    statusText.innerText = `⏹️ การสแกนถูกหยุดโดยผู้ใช้ (พบตรงเป้าหมาย ${matchesFoundCount} ภาพ)`;
+                    statusPercent.innerText = 'หยุดแล้ว';
+                    progressBar.style.background = 'var(--warning)';
+                } else {
+                    statusText.innerText = `⚠️ การเชื่อมต่อขัดข้อง: ${err.message}`;
+                }
+            } finally {
+                if (scanTimerInterval) { clearInterval(scanTimerInterval); scanTimerInterval = null; }
+                scanAbortController = null;
+                isScanAborted = false;
+                btn.disabled = false;
+                btnStop.style.display = 'none';
+                spinner.style.display = 'none';
+                btnText.innerText = isLocal ? '⚡ เริ่มสแกนภาพจาก SSD (High-Speed Scan)' : '🚀 เริ่มสแกนค้นหาใบหน้าทั่วเว็บไซต์';
+            }
+        }
+
+        async function downloadImagesToSSD() {
+            const urlInput = document.getElementById('dl-link-input');
+            const targetUrl = urlInput.value.trim();
+            if (!targetUrl) {
+                alert('กรุณาระบุ URL ของเว็บไซต์หรือหมวดหมู่ที่ต้องการดึงรูปภาพ');
+                return;
+            }
+
+            const btn = document.getElementById('btn-dl-to-ssd');
+            const btnText = document.getElementById('dl-btn-text');
+            const btnIcon = document.getElementById('dl-btn-icon');
+            const progressBox = document.getElementById('dl-progress-box');
+            const statusText = document.getElementById('dl-status-text');
+            const percentText = document.getElementById('dl-percent-text');
+            const progressBar = document.getElementById('dl-progress-bar');
+            const badge = document.getElementById('ssd-count-badge');
+
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+            btnIcon.innerText = '⏳';
+            btnText.innerText = 'กำลังดึงภาพ...';
+            progressBox.style.display = 'block';
+            progressBar.style.width = '5%';
+            percentText.innerText = '0%';
+            statusText.innerText = '🌐 Spider กำลังเข้าสำรวจและแกะแกลเลอรีภาพความละเอียดสูง...';
+
+            const maxPages = document.getElementById('dl-max-pages') ? document.getElementById('dl-max-pages').value : 300;
+
+            try {
+                const res = await fetch(`/api/v1/dataset/download-stream?webpage_url=${encodeURIComponent(targetUrl)}&max_pages=${maxPages}`, {
+                    method: 'POST'
+                });
+
+                if (!res.ok) {
+                    throw new Error('การเชื่อมต่อเซิร์ฟเวอร์ขัดข้อง');
+                }
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (trimmed.startsWith('data: ')) {
+                            try {
+                                const evt = JSON.parse(trimmed.substring(6));
+                                if (evt.type === 'status') {
+                                    statusText.innerText = evt.message;
+                                } else if (evt.type === 'crawl_done') {
+                                    statusText.innerText = `🕷️ ค้นพบภาพ ${evt.total_images} ภาพ — กำลังดาวน์โหลดลง SSD...`;
+                                } else if (evt.type === 'download_progress') {
+                                    progressBar.style.width = `${evt.percent}%`;
+                                    percentText.innerText = `${evt.percent}%`;
+                                    statusText.innerText = `📥 ดาวน์โหลดลง SSD แล้ว ${evt.downloaded} ภาพ (${evt.processed}/${evt.total})...`;
+                                } else if (evt.type === 'complete') {
+                                    progressBar.style.width = '100%';
+                                    progressBar.style.background = 'var(--success)';
+                                    percentText.innerText = '100%';
+                                    statusText.innerText = `✅ สำเร็จ! เพิ่มภาพใหม่ ${evt.downloaded} ภาพลง SSD (รวมในเครื่อง ${evt.total_in_ssd} ภาพ)`;
+                                    if (badge) badge.innerText = `${evt.total_in_ssd} ภาพพร้อมสแกน`;
+                                } else if (evt.type === 'error') {
+                                    statusText.innerText = `⚠️ ${evt.message}`;
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                }
+            } catch (err) {
+                statusText.innerText = `❌ เกิดข้อผิดพลาด: ${err.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btnIcon.innerText = '📥';
+                btnText.innerText = 'ดึงรูปลง SSD';
+            }
+        }
+    </script>
+</body>
+</html>
