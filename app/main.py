@@ -89,6 +89,10 @@ def create_app() -> FastAPI:
     from fastapi.staticfiles import StaticFiles
 
     template_path = Path(__file__).parent / "templates" / "index.html"
+    static_path = Path(__file__).parent / "static"
+    if static_path.exists():
+        app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+
     dataset_img_path = settings.resolved_dataset_images_dir
     if dataset_img_path.exists():
         app.mount("/dataset-images", StaticFiles(directory=str(dataset_img_path)), name="dataset-images")

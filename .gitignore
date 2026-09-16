@@ -49,6 +49,7 @@ test_target.jpg
 *.jpeg
 *.png
 *.webp
+!app/static/*
 
 # Qdrant local storage
 qdrant_storage/

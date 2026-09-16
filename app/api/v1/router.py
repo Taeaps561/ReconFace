@@ -562,7 +562,7 @@ async def dataset_download_stream(
 
     async def event_generator():
         start_time = time.time()
-        yield f"data: {json.dumps({'type': 'status', 'message': f'🌐 กำลังส่ง Spider ออกสำรวจ {webpage_url} (ความลึก {max_pages} หน้า)...'})}\n\n"
+        yield f"data: {json.dumps({'type': 'status', 'message': f'กำลังส่ง Spider ออกสำรวจ {webpage_url} (ความลึก {max_pages} หน้า)...'})}\n\n"
 
         try:
             main_title, discovered_items = await FullSiteCrawlerService.crawl_website(
@@ -590,7 +590,7 @@ async def dataset_download_stream(
             except Exception:
                 pass
 
-        yield f"data: {json.dumps({'type': 'status', 'message': f'📥 ค้นพบรูปภาพ {total_discovered} ภาพ — กำลังดาวน์โหลดลง SSD แบบขนาน...'})}\n\n"
+        yield f"data: {json.dumps({'type': 'status', 'message': f'ค้นพบรูปภาพ {total_discovered} ภาพ — กำลังดาวน์โหลดลง SSD แบบขนาน...'})}\n\n"
 
         downloaded_count = 0
         new_meta_entries = []
@@ -691,7 +691,7 @@ async def scan_webpage_stream(
     async def event_generator():
         start_time = time.time()
         
-        yield f"data: {json.dumps({'type': 'status', 'message': '🧠 กำลังสกัดโครงสร้างใบหน้าเป้าหมายด้วย Progressive Multi-Scale Engine...'})}\n\n"
+        yield f"data: {json.dumps({'type': 'status', 'message': 'กำลังสกัดโครงสร้างใบหน้าเป้าหมายด้วย Progressive Multi-Scale Engine...'})}\n\n"
         
         target_embeddings = await _extract_all_target_embeddings(face_engine, file, files, selected_face_index=selected_face_index)
         if not target_embeddings:
@@ -738,9 +738,9 @@ async def scan_webpage_stream(
             main_title = f"Local Offline Dataset ({len(discovered_items)} images)"
             distinct_pages = 1
             device_label = face_engine.active_device_name
-            yield f"data: {json.dumps({'type': 'status', 'message': f'📂 โหลดข้อมูลออฟไลน์จากสตอเรจสำเร็จ ({len(discovered_items)} ภาพ) — เริ่มสแกนบน {device_label} ทันที...'})}\n\n"
+            yield f"data: {json.dumps({'type': 'status', 'message': f'โหลดข้อมูลออฟไลน์จากสตอเรจสำเร็จ ({len(discovered_items)} ภาพ) — เริ่มสแกนบน {device_label} ทันที...'})}\n\n"
         else:
-            yield f"data: {json.dumps({'type': 'status', 'message': f'✅ สกัดใบหน้าเป้าหมายสำเร็จ ({len(target_embeddings)} รูปแบบ) 🌐 Spider กำลังสำรวจทุกลิงก์บน {webpage_url}...'})}\n\n"
+            yield f"data: {json.dumps({'type': 'status', 'message': f'สกัดใบหน้าเป้าหมายสำเร็จ ({len(target_embeddings)} รูปแบบ) — Spider กำลังสำรวจทุกลิงก์บน {webpage_url}...'})}\n\n"
             try:
                 main_title, discovered_items = await FullSiteCrawlerService.crawl_website(
                     webpage_url, max_pages=max_pages, max_images=None
@@ -770,7 +770,7 @@ async def scan_webpage_stream(
 
         yield f"data: {json.dumps({'type': 'crawl_done', 'page_title': main_title, 'pages_crawled': distinct_pages, 'total_images': total_images})}\n\n"
         device_label = face_engine.active_device_name
-        yield f"data: {json.dumps({'type': 'status', 'message': f'⚡ กำลังดึงรูปภาพและสแกนใบหน้าบน {device_label} แบบเรียลไทม์ (ทั้งหมด {total_images} ภาพ)...'})}\n\n"
+        yield f"data: {json.dumps({'type': 'status', 'message': f'กำลังดึงรูปภาพและสแกนใบหน้าบน {device_label} แบบเรียลไทม์ (ทั้งหมด {total_images} ภาพ)...'})}\n\n"
 
         matches_found = []
         all_candidates = []
@@ -820,6 +820,7 @@ async def scan_webpage_stream(
                     if max(h, w) > 1920:
                         scale = 1920.0 / max(h, w)
                         page_img = cv2.resize(page_img, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+                    cur_h, cur_w = page_img.shape[:2]
 
                     page_face_results = face_engine.extract_embeddings(page_img, is_query=False)
                     if not page_face_results:
@@ -850,6 +851,17 @@ async def scan_webpage_stream(
                             if ok:
                                 thumb_b64 = f"data:image/jpeg;base64,{base64.b64encode(buf).decode('ascii')}"
 
+                        bx1 = float(fr.detection.bbox.x1)
+                        by1 = float(fr.detection.bbox.y1)
+                        bx2 = float(fr.detection.bbox.x2)
+                        by2 = float(fr.detection.bbox.y2)
+                        box_pct = [
+                            round(max(0.0, bx1 / cur_w), 4),
+                            round(max(0.0, by1 / cur_h), 4),
+                            round(min(1.0, bx2 / cur_w), 4),
+                            round(min(1.0, by2 / cur_h), 4),
+                        ]
+
                         match_payload = {
                             "image_url": it_meta["image_url"],
                             "page_url": it_meta.get("page_url"),
@@ -857,6 +869,10 @@ async def scan_webpage_stream(
                             "score": round(sim, 4),
                             "thumbnail_path": "",
                             "thumbnail_b64": thumb_b64,
+                            "bbox": [round(bx1, 1), round(by1, 1), round(bx2, 1), round(by2, 1)],
+                            "bbox_pct": box_pct,
+                            "img_width": cur_w,
+                            "img_height": cur_h,
                         }
 
                         if sim > best_sim:
@@ -982,9 +998,9 @@ async def agent_chat_stream(
                     c_n = np.linalg.norm(centroid_emb)
                     if c_n > 0:
                         centroid_emb /= c_n
-                    yield f"data: {json.dumps({'type': 'thought', 'content': f'✅ สกัด Facial Embeddings สำเร็จ {len(target_embeddings)} มุมมอง/ใบหน้า'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'thought', 'content': f'สกัด Facial Embeddings สำเร็จ {len(target_embeddings)} มุมมอง/ใบหน้า'})}\n\n"
                 else:
-                    yield f"data: {json.dumps({'type': 'thought', 'content': '⚠️ ไม่พบใบหน้าในรูปภาพที่แนบมา'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'thought', 'content': 'ไม่พบใบหน้าในรูปภาพที่แนบมา'})}\n\n"
 
             if target_url and target_embeddings:
                 # 1. Action: Scan Webpage
@@ -1002,11 +1018,11 @@ async def agent_chat_stream(
                 distinct_pages = len(set(it.get("page_url") for it in discovered_items if it.get("page_url")))
                 total_images = len(discovered_items)
 
-                yield f"data: {json.dumps({'type': 'thought', 'content': f'📦 สำรวจพบทั้งหมด {distinct_pages} หน้า | ค้นพบรูปภาพรวม {total_images} ภาพ'})}\n\n"
+                yield f"data: {json.dumps({'type': 'thought', 'content': f'สำรวจพบทั้งหมด {distinct_pages} หน้า | ค้นพบรูปภาพรวม {total_images} ภาพ'})}\n\n"
                 if total_images == 0:
-                    yield f"data: {json.dumps({'type': 'thought', 'content': '⚠️ ไม่พบไฟล์รูปภาพที่สามารถดาวน์โหลดได้บนเว็บไซต์นี้'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'thought', 'content': 'ไม่พบไฟล์รูปภาพที่สามารถดาวน์โหลดได้บนเว็บไซต์นี้'})}\n\n"
                 else:
-                    yield f"data: {json.dumps({'type': 'thought', 'content': f'⚡ เริ่มต้นดาวน์โหลดและเทียบโครงสร้างใบหน้าทั้ง {total_images} ภาพแบบขนาน (Concurrently)...'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'thought', 'content': f'เริ่มต้นดาวน์โหลดและเทียบโครงสร้างใบหน้าทั้ง {total_images} ภาพแบบขนาน (Concurrently)...'})}\n\n"
 
                 matches_found = []
                 all_candidates = []
@@ -1047,6 +1063,7 @@ async def agent_chat_stream(
 
                         best_img_match = None
                         best_sim = -1.0
+                        cur_h, cur_w = page_img.shape[:2]
 
                         for pfr in page_face_results:
                             bbox = pfr.detection.bbox
@@ -1076,12 +1093,27 @@ async def agent_chat_stream(
                                 if ok:
                                     thumb_b64 = f"data:image/jpeg;base64,{base64.b64encode(buf).decode('ascii')}"
 
+                            bx1 = float(bbox.x1)
+                            by1 = float(bbox.y1)
+                            bx2 = float(bbox.x2)
+                            by2 = float(bbox.y2)
+                            box_pct = [
+                                round(max(0.0, bx1 / cur_w), 4),
+                                round(max(0.0, by1 / cur_h), 4),
+                                round(min(1.0, bx2 / cur_w), 4),
+                                round(min(1.0, by2 / cur_h), 4),
+                            ]
+
                             cand_obj = {
                                 "image_url": item_meta["image_url"],
                                 "page_url": item_meta.get("page_url"),
                                 "page_title": item_meta.get("page_title"),
                                 "score": round(sim, 4),
                                 "thumbnail_b64": thumb_b64,
+                                "bbox": [round(bx1, 1), round(by1, 1), round(bx2, 1), round(by2, 1)],
+                                "bbox_pct": box_pct,
+                                "img_width": cur_w,
+                                "img_height": cur_h,
                             }
 
                             if sim > best_sim:
@@ -1131,12 +1163,12 @@ async def agent_chat_stream(
                                         }
                                     p_title = best_img_match.get("page_title", "")
                                     match_percent = round(best_img_match["score"] * 100, 1)
-                                    yield f"data: {json.dumps({'type': 'thought', 'content': f'🎯 พบภาพตรงกัน ({match_percent}%) บนหน้า: {p_title}'})}\n\n"
+                                    yield f"data: {json.dumps({'type': 'thought', 'content': f'พบภาพตรงกัน ({match_percent}%) บนหน้า: {p_title}'})}\n\n"
                                     yield f"data: {json.dumps({'type': 'match_found', 'match': best_img_match, 'count': len(matches_found)})}\n\n"
 
                         yield f"data: {json.dumps({'type': 'scan_progress', 'scanned': scanned_count, 'total': total_images, 'matches_count': len(matches_found)})}\n\n"
 
-                yield f"data: {json.dumps({'type': 'thought', 'content': f'🏁 สแกนเสร็จสิ้นครบ {scanned_count} ภาพ (ตรวจพบใบหน้าทั้งหมด {total_faces_found} ใบหน้าบนเว็บ, พบตรงเกณฑ์ {len(matches_found)} ภาพ)'})}\n\n"
+                yield f"data: {json.dumps({'type': 'thought', 'content': f'สแกนเสร็จสิ้นครบ {scanned_count} ภาพ (ตรวจพบใบหน้าทั้งหมด {total_faces_found} ใบหน้าบนเว็บ, พบตรงเกณฑ์ {len(matches_found)} ภาพ)'})}\n\n"
 
                 duration = round(time.time() - start_time, 1)
                 all_candidates.sort(key=lambda m: m["score"], reverse=True)
@@ -1145,7 +1177,7 @@ async def agent_chat_stream(
                 llm_dossier = ""
                 if llm_provider != "builtin" and (llm_api_key or llm_provider == "ollama") and matches_found:
                     chosen_model = llm_model if llm_model else "Default"
-                    yield f"data: {json.dumps({'type': 'thought', 'content': f'🧠 ส่งข้อมูลหลักฐานให้ {llm_provider.upper()} ({chosen_model}) ประมวลผลและสร้าง Dossier สรุปประวัติ...'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'thought', 'content': f'ส่งข้อมูลหลักฐานให้ {llm_provider.upper()} ({chosen_model}) ประมวลผลและสร้าง Dossier สรุปประวัติ...'})}\n\n"
 
                     try:
                         async with httpx.AsyncClient(timeout=8.0, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0"}) as page_client:
@@ -1174,18 +1206,18 @@ async def agent_chat_stream(
                         llm_dossier = f"(ไม่สามารถสร้างสรุป AI Dossier ได้: {llm_err})"
 
                 # Response synthesis
-                reply_text = f"### 📑 รายงานผลการสืบสวน (OSINT Investigation Summary)\n\n"
+                reply_text = f"### รายงานผลการสืบสวน (OSINT Investigation Summary)\n\n"
                 reply_text += f"• **เว็บไซต์ที่สำรวจ**: {target_url}\n"
                 reply_text += f"• **ภาพที่ตรวจสอบทั้งหมด**: {scanned_count} ภาพ จาก {distinct_pages} หน้า\n"
                 reply_text += f"• **พบภาพที่ตรงกับบุคคลเป้าหมาย**: **{len(matches_found)} รูปภาพ**\n\n"
 
                 if llm_dossier:
-                    reply_text += f"\n---\n\n### 🧠 บทวิเคราะห์ประวัติและบทบาทเชิงลึก (AI Dossier by {llm_provider.upper()}):\n\n"
+                    reply_text += f"\n---\n\n### บทวิเคราะห์ประวัติและบทบาทเชิงลึก (AI Dossier by {llm_provider.upper()}):\n\n"
                     reply_text += llm_dossier
                 elif matches_found:
                     reply_text += f"หลักฐานทั้งหมดถูกรวบรวมไว้ในการ์ดด้านบนแล้ว คุณสามารถคลิกดูรูปต้นฉบับหรือลิงก์หน้าที่ปรากฏตัวได้เลยครับ"
                     if not llm_api_key and llm_provider != "ollama":
-                        reply_text += f"\n\n💡 *Tip: คุณสามารถกดปุ่ม **⚙️ ตั้งค่า LLM** ด้านบน เพื่อเชื่อมต่อ Gemini หรือ GPT-4o ให้ช่วยวิเคราะห์สรุปประวัติเชิงลึกได้ครับ*"
+                        reply_text += f"\n\n*Tip: คุณสามารถกดปุ่ม **ตั้งค่า LLM** ด้านบน เพื่อเชื่อมต่อ Gemini หรือ GPT-4o ให้ช่วยวิเคราะห์สรุปประวัติเชิงลึกได้ครับ*"
                 else:
                     reply_text += f"ไม่พบใบหน้าที่ตรงกับเกณฑ์ความมั่นใจ ({score_threshold}) บนเว็บไซต์นี้"
                     if all_candidates and all_candidates[0]["score"] > 0.25:
@@ -1226,17 +1258,17 @@ async def agent_chat_stream(
             else:
                 # 3. Conversational / Help
                 await asyncio.sleep(0.5)
-                reply_text = "สวัสดีครับ! ผมคือ **ReconFace AI Agent** ระบบสืบสวนและจดจำใบหน้าอัตโนมัติ 🕵️‍♂️\n\n"
+                reply_text = "สวัสดีครับ! ผมคือ **ReconFace AI Agent** ระบบสืบสวนและจดจำใบหน้าอัตโนมัติ\n\n"
                 reply_text += "**วิธีใช้งาน:**\n"
-                reply_text += "1. 📎 **แนบรูปภาพบุคคลเป้าหมาย** (กดที่ไอคอนแนบไฟล์ด้านล่าง)\n"
-                reply_text += "2. 💬 **พิมพ์บอกผมได้เลย** เช่น: `ช่วยหาคนในรูปนี้บนเว็บ https://www.dusit.ac.th/home/?s=วิชชา+ฉิมพลี ให้หน่อย`\n"
+                reply_text += "1. **แนบรูปภาพบุคคลเป้าหมาย** (กดที่ปุ่มแนบไฟล์ด้านล่าง)\n"
+                reply_text += "2. **พิมพ์บอกผมได้เลย** เช่น: `ช่วยหาคนในรูปนี้บนเว็บ https://www.dusit.ac.th/home/?s=วิชชา+ฉิมพลี ให้หน่อย`\n"
                 reply_text += "3. ผมจะออกสำรวจเว็บ แกะรอยใบหน้า และสรุปหลักฐานพร้อม Dossier รายงานให้คุณทันทีครับ!"
 
                 yield f"data: {json.dumps({'type': 'message', 'content': reply_text, 'duration': round(time.time() - start_time, 1), 'matches_count': 0})}\n\n"
 
         except Exception as e:
             logger.exception("Agent chat stream exception: %s", e)
-            yield f"data: {json.dumps({'type': 'thought', 'content': f'⚠️ เกิดข้อผิดพลาด: {str(e)}'})}\n\n"
+            yield f"data: {json.dumps({'type': 'thought', 'content': f'เกิดข้อผิดพลาด: {str(e)}'})}\n\n"
             yield f"data: {json.dumps({'type': 'message', 'content': f'เกิดข้อผิดพลาดในการประมวลผล: {str(e)}'})}\n\n"
 
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
